@@ -1,4 +1,5 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Cookie
+from pydantic import BaseModel
 
 app = FastAPI()
 
@@ -26,3 +27,18 @@ def method():
 @app.delete("/method")
 def method():
     return {"method": "DELETE"}
+
+
+class Patient(BaseModel):
+    name: str
+    surname: str
+
+
+requests_count = 0
+
+
+@app.post("/patient")
+def patient(patient: Patient):
+    global requests_count
+    requests_count += 1
+    return {"id": requests_count, "patient": patient}
