@@ -56,5 +56,5 @@ def patient(pk):
         global patients
         patient = patients[int(pk)]
     except KeyError:
-        raise HTTPException(status_code=404, detail="Patient not found")
+        raise HTTPException(status_code=204, detail="No content")
     return patient
