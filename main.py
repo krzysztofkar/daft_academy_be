@@ -31,7 +31,7 @@ def method():
 
 class Patient(BaseModel):
     name: str
-    surname: str
+    surename: str
 
 
 requests_count = 0
