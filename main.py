@@ -34,7 +34,7 @@ class Patient(BaseModel):
     surename: str
 
 
-requests_count = 0
+requests_count = -1
 patients = {}
 
 
