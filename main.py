@@ -43,7 +43,7 @@ def login(response: Response, user: str = Depends(read_current_user)):
     return RedirectResponse("/welcome")
 
 
-@app.get("/logout")
+@app.post("/logout")
 def logout(response: Response, user: str = Depends(read_current_user)):
     response.delete_cookie("session_token")
     return RedirectResponse("/")
