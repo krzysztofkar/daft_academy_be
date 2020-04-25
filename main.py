@@ -1,11 +1,15 @@
+import secrets
 from hashlib import sha256
 
-from fastapi import FastAPI, HTTPException, Request, Response
+from fastapi import Depends, FastAPI, HTTPException, Request, Response, status
 from fastapi.responses import RedirectResponse
+from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from pydantic import BaseModel
 
 app = FastAPI()
 app.secret_key = "ba217dd867bf9b31ca568c533cc0ecacb3c2d9e12d94cfca8731abc593eda237"
+
+security = HTTPBasic()
 
 
 @app.get("/")
@@ -18,16 +22,24 @@ def welcome():
     return {"message": "Hello"}
 
 
-@app.post("/login")
-def login(login: str, password: str, response: Response):
-    cred = sha256(bytes(f"trudnYPaC13Nt{app.secret_key}", encoding="utf8")).hexdigest()
-    session_token = sha256(
-        bytes(f"{login}{password}{app.secret_key}", encoding="UTF-8")
-    ).hexdigest()
+def read_current_user(credentials: HTTPBasicCredentials = Depends(security)):
+    correct_username = secrets.compare_digest(credentials.username, "trudnY")
+    correct_password = secrets.compare_digest(credentials.password, "PaC13Nt")
+    if not (correct_username and correct_password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect email or password",
+            headers={"WWW-Authenticate": "Basic"},
+        )
+    return {"username": credentials.username, "password": credentials.password}
 
+
+@app.post("/login")
+def login(response: Response, user: str = Depends(read_current_user)):
+    session_token = sha256(
+        bytes(f"{user['username']}{user['password']}{app.secret_key}", encoding="utf8")
+    ).hexdigest()
     response.set_cookie(key="session_token", value=session_token)
-    if session_token != cred:
-        raise HTTPException(status_code=401, detail="Unauthorised")
     return RedirectResponse("/welcome")
 
 
