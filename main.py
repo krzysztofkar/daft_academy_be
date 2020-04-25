@@ -58,7 +58,7 @@ patients = {}
 
 
 @app.post("/patient")
-def patient(patient: Patient):
+def patient(patient: Patient, user: str = Depends(read_current_user)):
     global requests_count
     requests_count += 1
     try:
@@ -70,7 +70,7 @@ def patient(patient: Patient):
 
 
 @app.get("/patient/{pk}")
-def patient(pk):
+def patient(pk, user: str = Depends(read_current_user)):
     try:
         global patients
         patient = patients[int(pk)]
