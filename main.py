@@ -46,8 +46,9 @@ def login(response: Response, user: str = Depends(read_current_user)):
 @app.post("/logout")
 def logout(response: Response, user: str = Depends(read_current_user)):
     response.delete_cookie("session_token")
-    response.status_code = 307
-    return RedirectResponse("/")
+    response.status_code = status.HTTP_302_TEMPORARY_REDIRECT
+    response.headers["Location"] = "/"
+    return response
 
 
 @app.api_route(path="/method", methods=["GET", "POST", "DELETE", "PUT", "OPTIONS"])
