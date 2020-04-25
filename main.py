@@ -4,22 +4,19 @@ from hashlib import sha256
 from fastapi import Depends, FastAPI, HTTPException, Request, Response, status
 from fastapi.responses import RedirectResponse
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
+from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
+
+templates = Jinja2Templates(directory="templates")
 
 app = FastAPI()
 app.secret_key = "ba217dd867bf9b31ca568c533cc0ecacb3c2d9e12d94cfca8731abc593eda237"
-
 security = HTTPBasic()
 
 
 @app.get("/")
 def hello_world():
     return {"message": "Hello World during the coronavirus pandemic!"}
-
-
-@app.get("/welcome")
-def welcome():
-    return {"message": "Hello"}
 
 
 def read_current_user(credentials: HTTPBasicCredentials = Depends(security)):
@@ -34,6 +31,13 @@ def read_current_user(credentials: HTTPBasicCredentials = Depends(security)):
     return {"username": credentials.username, "password": credentials.password}
 
 
+@app.get("/welcome")
+def welcome(request: Request, user: str = Depends(read_current_user)):
+    return templates.TemplateResponse(
+        "greeting.html", {"request": request, "user": user["username"]}
+    )
+
+
 @app.post("/login")
 def login(response: Response, user: str = Depends(read_current_user)):
     session_token = sha256(
@@ -44,11 +48,9 @@ def login(response: Response, user: str = Depends(read_current_user)):
 
 
 @app.post("/logout")
-def logout(response: Response, user: str = Depends(read_current_user)):
+def logout(req: Request, response: Response, user: str = Depends(read_current_user)):
     response.delete_cookie("session_token")
-    response.status_code = status.HTTP_307_TEMPORARY_REDIRECT
-    response.headers["Location"] = "/"
-    return response
+    return RedirectResponse("/")
 
 
 @app.api_route(path="/method", methods=["GET", "POST", "DELETE", "PUT", "OPTIONS"])
