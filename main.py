@@ -9,6 +9,11 @@ def hello_world():
     return {"message": "Hello World during the coronavirus pandemic!"}
 
 
+@app.get("/welcome")
+def welcome():
+    return {"message": "Hello"}
+
+
 @app.get("/method")
 def method():
     return {"method": "GET"}
