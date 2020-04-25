@@ -43,6 +43,12 @@ def login(response: Response, user: str = Depends(read_current_user)):
     return RedirectResponse("/welcome")
 
 
+@app.get("/logout")
+def logout(response: Response, user: str = Depends(read_current_user)):
+    response.delete_cookie("session_token")
+    return RedirectResponse("/")
+
+
 @app.api_route(path="/method", methods=["GET", "POST", "DELETE", "PUT", "OPTIONS"])
 def read_request(request: Request):
     return {"method": request.method}
