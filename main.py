@@ -13,7 +13,7 @@ def hello_world():
     return {"message": "Hello World during the coronavirus pandemic!"}
 
 
-@app.api_route(path="/welcome", methods=["GET", "POST"])
+@app.get("/welcome")
 def welcome():
     return {"message": "Hello"}
 
@@ -27,7 +27,7 @@ def login(login: str, password: str, response: Response):
 
     response.set_cookie(key="session_token", value=session_token)
     if session_token != cred:
-        raise HTTPException(status_code=403, detail="Unauthorised")
+        raise HTTPException(status_code=401, detail="Unauthorised")
     return RedirectResponse("/welcome")
 
 
