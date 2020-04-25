@@ -60,10 +60,10 @@ def read_request(request: Request):
 
 class Patient(BaseModel):
     name: str
-    surename: str
+    surname: str
 
 
-requests_count = -1
+requests_count = 0
 patients = {}
 
 
