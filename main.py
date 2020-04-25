@@ -67,23 +67,30 @@ requests_count = -1
 patients = {}
 
 
-@app.post("/patient")
-def patient(patient: Patient, user: str = Depends(read_current_user)):
-    global requests_count
-    requests_count += 1
-    try:
-        global patients
-        patient = patients[requests_count]
-    except KeyError:
-        patients[requests_count] = patient
-    return {"id": requests_count, "patient": patient}
+@app.api_route(path="/patient", methods=["GET", "POST"])
+def patient(
+    request: Request, patient: Patient = {}, user: str = Depends(read_current_user)
+):
+    if request.method == "POST":
+        global requests_count
+        requests_count += 1
+        try:
+            global patients
+            patient = patients[requests_count]
+        except KeyError:
+            patients[requests_count] = patient
+        return RedirectResponse(f"patient/{requests_count}")
+    return patients
 
 
-@app.get("/patient/{pk}")
-def patient(pk, user: str = Depends(read_current_user)):
+@app.api_route(path="/patient/{id}", methods=["GET", "DELETE"])
+def patient_id(id, request: Request, user: str = Depends(read_current_user)):
     try:
         global patients
-        patient = patients[int(pk)]
+        patient = patients[int(id)]
     except KeyError:
         raise HTTPException(status_code=204, detail="No content")
-    return patient
+    if request.method == "GET":
+        return patient
+    del patients[int(id)]
+    return Response(status_code=204)
