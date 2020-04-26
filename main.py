@@ -1,7 +1,7 @@
 import secrets
 from hashlib import sha256
 
-from fastapi import Depends, FastAPI, HTTPException, Request, Response, status
+from fastapi import Cookie, Depends, FastAPI, HTTPException, Request, Response, status
 from fastapi.responses import RedirectResponse
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.templating import Jinja2Templates
@@ -12,6 +12,13 @@ templates = Jinja2Templates(directory="templates")
 app = FastAPI()
 app.secret_key = "ba217dd867bf9b31ca568c533cc0ecacb3c2d9e12d94cfca8731abc593eda237"
 security = HTTPBasic()
+app.sessions = {}
+
+
+def get_token(user):
+    return sha256(
+        bytes(f"{user['username']}{user['password']}{app.secret_key}", encoding="utf8")
+    ).hexdigest()
 
 
 @app.get("/")
@@ -31,24 +38,37 @@ def read_current_user(credentials: HTTPBasicCredentials = Depends(security)):
     return {"username": credentials.username, "password": credentials.password}
 
 
+def check_token(token: str = Cookie(None), user: str = Depends(read_current_user)):
+    token = get_token(user)
+    if token not in app.sessions:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect email or password",
+            headers={"WWW-Authenticate": "Basic"},
+        )
+    return token
+
+
 @app.get("/welcome")
-def welcome(request: Request, user: str = Depends(read_current_user)):
+def welcome(request: Request, token: str = Depends(check_token)):
     return templates.TemplateResponse(
-        "greeting.html", {"request": request, "user": user["username"]}
+        "greeting.html", {"request": request, "user": app.sessions[token]}
     )
 
 
 @app.post("/login")
 def login(response: Response, user: str = Depends(read_current_user)):
-    session_token = sha256(
-        bytes(f"{user['username']}{user['password']}{app.secret_key}", encoding="utf8")
-    ).hexdigest()
+    session_token = get_token(user)
     response.set_cookie(key="session_token", value=session_token)
+    app.sessions[session_token] = user["username"]
     return RedirectResponse("/welcome")
 
 
-@app.post("/logout")
-def logout(req: Request, response: Response, user: str = Depends(read_current_user)):
+@app.get("/logout")
+def logout(
+    req: Request, response: Response, token: str = Depends(check_token),
+):
+    app.sessions.pop(token)
     response.delete_cookie("session_token")
     return RedirectResponse("/")
 
@@ -68,9 +88,7 @@ patients = {}
 
 
 @app.api_route(path="/patient", methods=["GET", "POST"])
-def patient(
-    request: Request, patient: Patient = {}, user: str = Depends(read_current_user)
-):
+def patient(request: Request, patient: Patient = {}, token: str = Depends(check_token)):
     if request.method == "POST":
         global requests_count
         requests_count += 1
@@ -84,7 +102,7 @@ def patient(
 
 
 @app.api_route(path="/patient/{id}", methods=["GET", "DELETE"])
-def patient_id(id, request: Request, user: str = Depends(read_current_user)):
+def patient_id(id, request: Request, token: str = Depends(check_token)):
     try:
         global patients
         patient = patients[int(id)]
