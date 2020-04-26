@@ -70,7 +70,8 @@ def logout(
 ):
     app.sessions.pop(token)
     response.delete_cookie("session_token")
-    return RedirectResponse("/")
+    response = RedirectResponse(url="/", status_code=status.HTTP_302_FOUND)
+    return response
 
 
 @app.api_route(path="/method", methods=["GET", "POST", "DELETE", "PUT", "OPTIONS"])
@@ -111,4 +112,4 @@ def patient_id(id, request: Request, token: str = Depends(check_token)):
     if request.method == "GET":
         return patient
     del patients[int(id)]
-    return Response(status_code=204)
+    return Response(status_code=307)
