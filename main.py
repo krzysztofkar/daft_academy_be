@@ -1,11 +1,13 @@
 import secrets
 from hashlib import sha256
 
-from fastapi import Cookie, Depends, FastAPI, HTTPException, Request, Response, status
-from fastapi.responses import RedirectResponse
+from fastapi import Cookie, Depends, FastAPI, HTTPException
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
+from starlette import status
+from starlette.requests import Request
+from starlette.responses import RedirectResponse, Response
 
 templates = Jinja2Templates(directory="templates")
 
