@@ -1,11 +1,10 @@
 import secrets
 from hashlib import sha256
 
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import Cookie, Depends, FastAPI, HTTPException, status
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
-from starlette import status
 from starlette.requests import Request
 from starlette.responses import RedirectResponse, Response
 
@@ -43,10 +42,10 @@ def read_current_user(credentials: HTTPBasicCredentials = Depends(security)):
     return token
 
 
-def check_token(token: str = Depends(read_current_user)):
-    if token not in app.sessions:
-        token = None
-    return token
+def check_token(session_token: str = Cookie(None)):
+    if session_token not in app.sessions:
+        session_token = None
+    return session_token
 
 
 @app.get("/welcome")
@@ -60,18 +59,17 @@ def welcome(request: Request, token: str = Depends(check_token)):
 
 @app.post("/login")
 def login(response: Response, token: str = Depends(read_current_user)):
+    response = RedirectResponse("/welcome")
     response.set_cookie(key="session_token", value=token)
-    response.headers["Location"] = "/welcome"
-    response.status_code = status.HTTP_302_FOUND
+    return response
 
 
 @app.post("/logout")
-def logout(*, response: Response, token: str = Depends(check_token)):
+def logout(response: Response, token: str = Depends(check_token)):
     if token is None:
         raise HTTPException(status_code=401, detail="Unauthorised")
     app.sessions.pop(token)
-    response.headers["Location"] = "/"
-    response.status_code = status.HTTP_302_FOUND
+    response = RedirectResponse("/")
     return response
 
 
@@ -120,3 +118,4 @@ def patient_id(
         return patient
     del patients[int(id)]
     response.status_code = status.HTTP_204_NO_CONTENT
+    return response
