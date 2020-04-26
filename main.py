@@ -99,7 +99,7 @@ def patient(request: Request, patient: Patient = {}, token: str = Depends(check_
             patient = patients[requests_count]
         except KeyError:
             patients[requests_count] = patient
-        return RedirectResponse(f"patient/{requests_count}")
+        return RedirectResponse(f"/patient/{requests_count}")
     return patients
 
 
