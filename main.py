@@ -67,7 +67,7 @@ def login(response: Response, user: str = Depends(read_current_user)):
     response.set_cookie(key="session_token", value=session_token)
 
 
-@app.get("/logout")
+@app.post("/logout")
 def logout(
     req: Request, response: Response, token: str = Depends(check_token),
 ):
