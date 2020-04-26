@@ -1,7 +1,7 @@
 import secrets
 from hashlib import sha256
 
-from fastapi import Cookie, Depends, FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
@@ -37,13 +37,13 @@ def read_current_user(credentials: HTTPBasicCredentials = Depends(security)):
             detail="Incorrect email or password",
             headers={"WWW-Authenticate": "Basic"},
         )
-    return {"username": credentials.username, "password": credentials.password}
-
-
-def check_token(
-    token: str = Cookie(None), user: str = Depends(read_current_user),
-):
+    user = {"username": credentials.username, "password": credentials.password}
     token = get_token(user)
+    app.sessions[token] = credentials.username
+    return token
+
+
+def check_token(token: str = Depends(read_current_user)):
     if token not in app.sessions:
         token = None
     return token
@@ -59,23 +59,20 @@ def welcome(request: Request, token: str = Depends(check_token)):
 
 
 @app.post("/login")
-def login(response: Response, user: str = Depends(read_current_user)):
-    session_token = get_token(user)
-    app.sessions[session_token] = user["username"]
-    response.status_code = status.HTTP_302_FOUND
+def login(response: Response, token: str = Depends(read_current_user)):
+    response.set_cookie(key="session_token", value=token)
     response.headers["Location"] = "/welcome"
-    response.set_cookie(key="session_token", value=session_token)
+    response.status_code = status.HTTP_302_FOUND
 
 
 @app.post("/logout")
-def logout(
-    req: Request, response: Response, token: str = Depends(check_token),
-):
+def logout(*, response: Response, token: str = Depends(check_token)):
     if token is None:
         raise HTTPException(status_code=401, detail="Unauthorised")
-    response.status_code = status.HTTP_302_FOUND
-    response.headers["Location"] = "/"
     app.sessions.pop(token)
+    response.headers["Location"] = "/"
+    response.status_code = status.HTTP_302_FOUND
+    return response
 
 
 @app.api_route(path="/method", methods=["GET", "POST", "DELETE", "PUT", "OPTIONS"])
@@ -109,7 +106,9 @@ def patient(request: Request, patient: Patient = {}, token: str = Depends(check_
 
 
 @app.api_route(path="/patient/{id}", methods=["GET", "DELETE"])
-def patient_id(id, request: Request, token: str = Depends(check_token)):
+def patient_id(
+    id, request: Request, response: Response, token: str = Depends(check_token)
+):
     if token is None:
         raise HTTPException(status_code=401, detail="Unauthorised")
     try:
@@ -120,4 +119,4 @@ def patient_id(id, request: Request, token: str = Depends(check_token)):
     if request.method == "GET":
         return patient
     del patients[int(id)]
-    return Response(status_code=307)
+    response.status_code = status.HTTP_204_NO_CONTENT
