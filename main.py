@@ -1,17 +1,19 @@
 import secrets
-import sqlite3
 from hashlib import sha256
 
 from fastapi import Cookie, Depends, FastAPI, HTTPException, status
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
+from routers import tracks
 from starlette.requests import Request
 from starlette.responses import RedirectResponse, Response
 
 templates = Jinja2Templates(directory="templates")
 
 app = FastAPI()
+app.include_router(tracks.router)
+
 app.secret_key = "ba217dd867bf9b31ca568c533cc0ecacb3c2d9e12d94cfca8731abc593eda237"
 security = HTTPBasic()
 app.sessions = {}
@@ -121,75 +123,3 @@ def patient_id(
     del patients[int(id)]
     response.status_code = status.HTTP_204_NO_CONTENT
     return response
-
-
-@app.on_event("startup")
-async def startup():
-    app.db_connection = sqlite3.connect("chinook.db")
-    app.db_connection.row_factory = sqlite3.Row
-
-
-@app.on_event("shutdown")
-async def shutdown():
-    app.db_connection.close()
-
-
-@app.get("/tracks")
-async def tracks(page: int = 0, per_page: int = 10):
-    cursor = app.db_connection.cursor()
-    tracks = cursor.execute(
-        "SELECT * FROM tracks ORDER BY trackid LIMIT ? OFFSET ?",
-        (per_page, per_page * page),
-    ).fetchall()
-    return tracks
-
-
-@app.get("/tracks/composers")
-async def tracks_composers(composer_name: str):
-    cursor = app.db_connection.cursor()
-    cursor.row_factory = lambda cursor, row: row[0]
-    songs_names = cursor.execute(
-        "SELECT name FROM tracks WHERE composer = ? ORDER BY name", (composer_name,)
-    ).fetchall()
-    if len(songs_names) == 0:
-        raise HTTPException(status_code=404, detail={"error": "Not Found"})
-    return songs_names
-
-
-class Album(BaseModel):
-    title: str
-    artist_id: int
-
-
-@app.post("/albums")
-async def albums(response: Response, album: Album):
-    cursor = app.db_connection.cursor()
-    cursor.row_factory = lambda cursor, row: row[0]
-    artist = cursor.execute(
-        "SELECT artistid FROM artists WHERE artistid = ?", (album.artist_id,)
-    ).fetchone()
-    if not artist:
-        raise HTTPException(status_code=404, detail={"error": "Not Found"})
-
-    album = cursor.execute(
-        "INSERT INTO albums (title, artistid) VALUES (?,?)",
-        (album.title, int(artist),),
-    )
-    app.db_connection.commit()
-    new_album = album.lastrowid
-    album = app.db_connection.execute(
-        "SELECT albumid, title, artistid FROM albums WHERE albumid = ?", (new_album,),
-    ).fetchone()
-    response.status_code = 201
-    return album
-
-
-@app.get("/albums/{album_id}")
-async def album(album_id):
-    cursor = app.db_connection.cursor()
-    album = cursor.execute(
-        "SELECT albumid, title, artistid FROM albums WHERE albumid = ?", (album_id,),
-    ).fetchone()
-    if not album:
-        raise HTTPException(status_code=404, detail={"error": "Not Found"})
-    return album
