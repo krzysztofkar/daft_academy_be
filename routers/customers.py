@@ -36,3 +36,20 @@ async def customers(customer_id, customer: Customer = {}):
     )
     router.db_connection.commit()
     return selected_customer
+
+
+@router.get("/sales")
+async def sales(category: str):
+    if category != "customers":
+        raise HTTPException(status_code=404, detail={"error": "Not Found"})
+
+    cursor = router.db_connection.cursor()
+    sales = cursor.execute(
+        """
+        SELECT customerid, email, phone, ROUND(SUM(total),2) AS Sum FROM
+        invoices JOIN customers USING(customerid) GROUP BY customerid
+        ORDER BY Sum DESC, customerid
+        """
+    ).fetchall()
+
+    return sales
