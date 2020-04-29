@@ -1,4 +1,5 @@
 import secrets
+import sqlite3
 from hashlib import sha256
 
 from fastapi import Cookie, Depends, FastAPI, HTTPException, status
@@ -70,6 +71,7 @@ def logout(response: Response, token: str = Depends(check_token)):
         raise HTTPException(status_code=401, detail="Unauthorised")
     app.sessions.pop(token)
     response = RedirectResponse("/")
+    response.delete_cookie("session_token")
     return response
 
 
@@ -119,3 +121,24 @@ def patient_id(
     del patients[int(id)]
     response.status_code = status.HTTP_204_NO_CONTENT
     return response
+
+
+@app.on_event("startup")
+async def startup():
+    app.db_connection = sqlite3.connect("chinook.db")
+    app.db_connection.row_factory = sqlite3.Row
+
+
+@app.on_event("shutdown")
+async def shutdown():
+    app.db_connection.close()
+
+
+@app.get("/tracks")
+async def tracks(page: int = 0, per_page: int = 10):
+    cursor = app.db_connection.cursor()
+    tracks = cursor.execute(
+        "SELECT * FROM tracks ORDER BY trackid LIMIT ? OFFSET ?",
+        (per_page, per_page * page),
+    ).fetchall()
+    return tracks
