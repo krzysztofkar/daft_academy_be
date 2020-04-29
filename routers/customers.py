@@ -40,16 +40,27 @@ async def customers(customer_id, customer: Customer = {}):
 
 @router.get("/sales")
 async def sales(category: str):
-    if category != "customers":
-        raise HTTPException(status_code=404, detail={"error": "Not Found"})
+    if category == "customers":
+        cursor = router.db_connection.cursor()
+        sales = cursor.execute(
+            """
+            SELECT customerid, email, phone, ROUND(SUM(total),2) AS Sum FROM
+            invoices JOIN customers USING(customerid) GROUP BY customerid
+            ORDER BY Sum DESC, customerid
+            """
+        ).fetchall()
+        return sales
 
-    cursor = router.db_connection.cursor()
-    sales = cursor.execute(
-        """
-        SELECT customerid, email, phone, ROUND(SUM(total),2) AS Sum FROM
-        invoices JOIN customers USING(customerid) GROUP BY customerid
-        ORDER BY Sum DESC, customerid
-        """
-    ).fetchall()
+    if category == "genres":
+        cursor = router.db_connection.cursor()
+        genres = cursor.execute(
+            """
+            SELECT g.name, Sum(quantity) AS Sum FROM invoice_items
+            JOIN tracks USING(trackid)
+            JOIN genres g USING(genreid)
+            GROUP BY genreid
+            ORDER BY Sum DESC, g.name"""
+        ).fetchall()
+        return genres
 
-    return sales
+    raise HTTPException(status_code=404, detail={"error": "Not Found"})
