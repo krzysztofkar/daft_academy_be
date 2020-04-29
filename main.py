@@ -5,7 +5,7 @@ from fastapi import Cookie, Depends, FastAPI, HTTPException, status
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
-from routers import tracks
+from routers import customers, tracks
 from starlette.requests import Request
 from starlette.responses import RedirectResponse, Response
 
@@ -13,6 +13,8 @@ templates = Jinja2Templates(directory="templates")
 
 app = FastAPI()
 app.include_router(tracks.router)
+app.include_router(customers.router)
+
 
 app.secret_key = "ba217dd867bf9b31ca568c533cc0ecacb3c2d9e12d94cfca8731abc593eda237"
 security = HTTPBasic()
