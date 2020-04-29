@@ -142,3 +142,15 @@ async def tracks(page: int = 0, per_page: int = 10):
         (per_page, per_page * page),
     ).fetchall()
     return tracks
+
+
+@app.get("/tracks/composers")
+async def tracks_composers(composer_name: str):
+    cursor = app.db_connection.cursor()
+    cursor.row_factory = lambda cursor, row: row[0]
+    songs_names = cursor.execute(
+        "SELECT name FROM tracks WHERE composer = ? ORDER BY name", (composer_name,)
+    ).fetchall()
+    if len(songs_names) == 0:
+        raise HTTPException(status_code=404, detail={"error": "Not Found"})
+    return songs_names
